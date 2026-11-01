@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Szene 6 – Quills Abteil (Schlösser knacken)</title>
+<style>
+*{box-sizing:border-box}
+body{background:#0e0c12;color:#e6dfd5;font-family:Georgia,'Times New Roman',serif;margin:0;padding:16px}
+header{max-width:820px;margin:0 auto 12px;padding:6px 0;border-bottom:2px solid #d4af37;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+header h1{margin:0;font-size:18px;letter-spacing:2px;color:#d4af37}
+header span{font-size:13px;opacity:.8}
+.card{max-width:820px;margin:0 auto 14px;background:#18141f;border:3px solid #d4af37;border-radius:8px;padding:16px;box-shadow:0 0 25px rgba(0,0,0,.8)}
+h2{margin:0 0 10px;color:#d4af37;font-size:1.05rem;letter-spacing:1px;text-transform:uppercase}
+.story{font-size:15px;line-height:1.5}
+.hb{display:flex;justify-content:space-between;align-items:center;background:#0b090f;border:1px solid #443a50;padding:8px 14px;border-radius:4px;margin:10px 0;font-family:Arial,sans-serif}
+.sv{font-size:1.15rem;font-weight:bold}
+canvas{background:#060508;border:2px solid #3d334a;display:block;margin:0 auto;cursor:crosshair;width:100%;max-width:760px;height:auto;touch-action:none}
+#msg{margin:10px 0;font-size:1.05rem;font-weight:bold;min-height:26px;color:#d4af37;font-family:Arial,sans-serif}
+.ctl{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.btn{background:#c86432;color:#fff;border:1px solid #d4af37;padding:10px 16px;font:bold 1rem Arial;cursor:pointer;border-radius:4px}
+.btn:hover{background:#db7543}
+.btn.active{background:#2ecc71;border-color:#27ae60}
+.btn.dark{background:#3a2c1c}
+.help{font-size:.85rem;color:#aaa;text-align:left;font-family:Arial,sans-serif}
+#opts{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+#opts button{text-align:left;font:14px Georgia,serif;background:#2a1f14;color:#f1e6cf;border:1px solid #d4af37;border-radius:4px;padding:9px 12px;cursor:pointer}
+#opts button:hover{background:#3a2c1c}
+#log p{margin:8px 0;line-height:1.45}
+#log .q{color:#c9b98e;font-style:italic}
+#log b{color:#d4af37}
+#diary{list-style:none;margin:0;padding:0;font-size:14px;line-height:1.4}
+#diary li{padding:5px 0;border-bottom:1px dashed #5a4a30}
+#diary li:last-child{border:0}
+#diary .empty{opacity:.6;font-style:italic}
+.hide{display:none}
+</style>
+</head>
+<body>
+<header><h1>DER LETZTE EID</h1><span>Szene 6 – Quills Abteil (Schlösser knacken)</span></header>
+
+<div class="card" id="intro">
+  <h2>Abteil 7</h2>
+  <div class="story" id="storytext">Quills Abteil, nur durch eine Wand von Hartmanns getrennt. Die Tür ist abgeschlossen, den Schlüssel hat Quill bei sich, und er steht mit den anderen auf dem Bahnsteig. Der Schaffner kommt in wenigen Augenblicken den Gang entlang. Ich habe den Dietrich. Je schneller ich das Schloss öffne, desto mehr Zeit bleibt mir drinnen.</div>
+</div>
+
+<div class="card" id="lockcard">
+  <h2>Abteilschloss (12 Sekunden)</h2>
+  <div class="hb"><div>Spannung: <span id="tt" class="sv" style="color:#e74c3c">0%</span></div><div>Druck: <span id="pt" class="sv" style="color:#888">Keiner</span></div><div>Zeit: <span id="tm" class="sv" style="color:#e74c3c">12s</span></div></div>
+  <canvas id="cv" width="760" height="320"></canvas>
+  <div id="msg">Klicke auf „Starten“. Du hast 12 Sekunden.</div>
+  <div class="ctl">
+    <button class="btn" id="startBtn" type="button">▶ Starten</button>
+    <div class="help">• <b>Maus</b>: Dietrich bewegen und hochdrücken<br>• <b>Leertaste</b> oder Knopf gedrückt halten: Spannung halten (40–80 %)</div>
+    <button class="btn" id="tensBtn" type="button">Spannung [SPACE]</button>
+  </div>
+  <div class="ctl" id="failCtl" style="margin-top:10px;justify-content:center"></div>
+</div>
+
+<div class="card hide" id="search">
+  <h2>Quills Abteil durchsuchen</h2>
+  <div id="log"></div>
+  <div id="opts"></div>
+  <div class="ctl" style="margin-top:12px;justify-content:flex-end"><button class="btn dark" id="leave" type="button">Hinaus</button></div>
+</div>
+
+<div class="card hide" id="done">
+  <div class="story" id="donetext"></div>
+  <div class="ctl" style="margin-top:12px;justify-content:center"><button class="btn" id="next" type="button">Weiter zum Hafenmarkt</button></div>
+</div>
+
+<div class="card">
+  <h2>Tagebuch</h2>
+  <ul id="diary"><li class="empty">Noch keine Einträge.</li></ul>
+</div>
+
+<script>
+const NEXT='szene7_hafenmarkt.html'; /* nächstes Kapitel: Hafenmarkt Lyon */
+const ICH='Dr. Wyss';
+
+/* Durchsuchung: pro Griff eine Option. Je mehr Sekunden nach dem Knacken übrig sind, desto mehr Griffe (1 bis 3). */
+const OPTS=[
+ {q:"Den Ofen und den Papierkorb durchsuchen.",a:[[ICH,"Im Ofen liegen verkohlte Papierreste, noch warm. Ziffernkolonnen und das Wort „Zünder“ sind noch zu erkennen: Seiten aus einem Hauptbuch. Jemand hat sie in der Nacht verbrannt."]],n:["verbrannte_seiten","In Quills Ofen liegen verbrannte Hauptbuchseiten (Ziffernkolonnen, das Wort „Zünder“ noch lesbar)."]},
+ {q:"Das Gepäck durchsehen.",a:[[ICH,"In der Reisetasche, in ein Hemd gewickelt, ein kleines braunes Fläschchen ohne Etikett, noch voll. Schwacher, bitterer Geruch. Was darin ist, kann ich ohne Labor nicht sagen."]],n:["gift","In Quills Reisetasche: ein kleines braunes Fläschchen ohne Etikett, noch voll, bitterer Geruch."]},
+ {q:"Die Jackentaschen prüfen.",a:[[ICH,"Ein bezahltes Billett für den Dampfer, der heute am Hafen von Lyon ablegt, ausgestellt für zwei Personen. Er hatte nicht vor, lange zu bleiben."]],n:["billett","In Quills Jackentasche: ein bezahltes Billett für zwei Personen auf dem Dampfer, der heute am Hafen von Lyon ablegt."]},
+ {q:"Die Verbindungstür von dieser Seite ansehen.",a:[[ICH,"Der Spalt unter der Tür ist breit genug, um etwas hindurchzuziehen. Auf dem Boden ist der Teppich glatt gestrichen, am Türrand haften zwei feine Drahtfusseln."]],n:["quills_seite","Unter der Verbindungstür auf Quills Seite: Spalt für einen Draht, glatt gestrichener Teppich, Drahtfusseln am Türrand."]}
+];
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const line=(sp,t)=>`<p><b>${esc(sp)}:</b> ${esc(t)}</p>`;
+
+/* ===== Gemeinsames Tagebuch aller Kapitel: localStorage 'eid_diary' = [[Schlüssel, Text], ...] ===== */
+const notes=new Map();
+function store(){try{
+  const a=JSON.parse(localStorage.getItem('eid_diary')||'[]');
+  notes.forEach((t,k)=>{if(!a.some(x=>x[0]===k))a.push([k,t])});
+  localStorage.setItem('eid_diary',JSON.stringify(a));
+  const n=new Set(JSON.parse(localStorage.getItem('eid_notes')||'[]'));notes.forEach((t,k)=>n.add(k));
+  localStorage.setItem('eid_notes',JSON.stringify([...n]));
+}catch(e){}}
+function addNote(k,t,quiet){
+  if(notes.has(k))return;notes.set(k,t);
+  const d=$('diary');if(d.querySelector('.empty'))d.innerHTML='';
+  const li=document.createElement('li');li.textContent=t;d.appendChild(li);
+  if(!quiet)store();
+}
+try{JSON.parse(localStorage.getItem('eid_diary')||'[]').forEach(([k,t])=>addNote(k,t,true))}catch(e){}
+
+/* ===== Dietrich-Minispiel (12 s, 4 Pins) ===== */
+const cv=$('cv'),cx=cv.getContext('2d');
+const BASE=225,LIFT=110,TOL=.08;           /* Pin-Grundlinie, maximaler Hub, Toleranz */
+let playing=false,timer=12,tid=null,raf=0,tension=0,pressed=false,mx=380,my=160;
+const pins=[{x:190,target:.35,current:0,set:false},{x:320,target:.70,current:0,set:false},{x:450,target:.25,current:0,set:false},{x:580,target:.55,current:0,set:false}];
+
+function setT(a){pressed=a;$('tensBtn').classList.toggle('active',a)}
+function pos(cl,ct){const r=cv.getBoundingClientRect();mx=(cl-r.left)*cv.width/r.width;my=(ct-r.top)*cv.height/r.height}
+cv.addEventListener('mousemove',e=>pos(e.clientX,e.clientY));
+cv.addEventListener('touchmove',e=>{const t=e.touches[0];pos(t.clientX,t.clientY);e.preventDefault()},{passive:false});
+cv.addEventListener('touchstart',e=>{const t=e.touches[0];pos(t.clientX,t.clientY);e.preventDefault()},{passive:false});
+$('tensBtn').addEventListener('mousedown',()=>setT(true));
+$('tensBtn').addEventListener('mouseleave',()=>setT(false));   /* Spannung löst sich, wenn die Maus den Knopf verlässt */
+$('tensBtn').addEventListener('touchstart',e=>{setT(true);e.preventDefault()});
+$('tensBtn').addEventListener('touchend',()=>setT(false));
+window.addEventListener('mouseup',()=>setT(false));
+window.addEventListener('blur',()=>setT(false));
+/* Leertaste hält nur die Spannung und löst nie einen Knopf aus (kein Neustart) */
+window.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();setT(true)}});
+window.addEventListener('keyup',e=>{if(e.code==='Space'){e.preventDefault();setT(false)}});
+
+function reset(){playing=false;clearInterval(tid);cancelAnimationFrame(raf);timer=12;tension=0;pins.forEach(p=>{p.current=0;p.set=false});
+  $('tm').textContent='12s';$('tt').textContent='0%';$('pt').textContent='Keiner';$('pt').style.color='#888'}
+function start(){
+  reset();playing=true;
+  $('failCtl').innerHTML='';
+  $('msg').textContent='Beeilung! Der Schaffner kommt in 12 Sekunden!';$('msg').style.color='#d4af37';
+  $('startBtn').textContent='↻ Neu starten';$('startBtn').blur();
+  tid=setInterval(()=>{if(!playing)return;timer--;$('tm').textContent=timer+'s';if(timer<=0)end(false,'Zeit abgelaufen! Der Schaffner hat mich erwischt.')},1000);
+  loop();                        /* genau eine Spielschleife */
+}
+function end(ok,msg){
+  playing=false;clearInterval(tid);cancelAnimationFrame(raf);draw();
+  const left=Math.max(0,timer);
+  $('msg').textContent=msg+(ok?' (noch '+left+' s übrig)':'');$('msg').style.color=ok?'#2ecc71':'#e74c3c';
+  try{localStorage.setItem('eid_lock',JSON.stringify({success:ok,left}))}catch(e){}
+  if(ok)setTimeout(()=>openSearch(left),900);
+  else{
+    const f=$('failCtl');f.innerHTML='';
+    const again=document.createElement('button');again.className='btn';again.textContent='Noch einmal versuchen';again.onclick=start;
+    const quit=document.createElement('button');quit.className='btn dark';quit.textContent='Aufgeben und weiter';quit.onclick=()=>finish('Ich bin nicht hineingekommen. Der Schaffner hat mich beinahe erwischt, ich ziehe mich zurück. Was in Quills Abteil liegt, bleibt mir verborgen.');
+    f.append(again,quit);
+  }
+}
+function update(){
+  if(!playing)return;
+  tension=pressed?Math.min(100,tension+5):Math.max(0,tension-6);
+  const tT=$('tt'),pT=$('pt');tT.textContent=Math.round(tension)+'%';
+  const opt=tension>=40&&tension<=80,over=tension>80;
+  if(over){tT.style.color='#e74c3c';pT.textContent='BLOCKIERT!';pT.style.color='#e74c3c'}
+  else if(opt){tT.style.color='#2ecc71';pT.textContent='Optimal';pT.style.color='#2ecc71'}
+  else{tT.style.color='#e67e22';pT.textContent='Zu schwach';pT.style.color='#888'}
+  let all=true;
+  pins.forEach(p=>{
+    if(p.set)return;all=false;
+    if(Math.abs(mx-p.x)<30){
+      if(over)return;
+      /* Die Dietrich-Spitze sitzt genau auf der Oberkante des Pins */
+      p.current=Math.max(0,Math.min(1.1,(BASE-my)/LIFT));
+      if(p.current>p.target+.16){p.current=0;timer=Math.max(1,timer-1);$('tm').textContent=timer+'s';$('msg').textContent='KLIRR! Überdrückt (−1 s)!';$('msg').style.color='#e74c3c'}
+      else if(opt&&Math.abs(p.current-p.target)<TOL){p.set=true;p.current=p.target}
+    }else p.current=Math.max(0,p.current-.08);
+  });
+  if(all)end(true,'KLACK! Das Schloss ist offen!');
+}
+function draw(){
+  cx.fillStyle='#060508';cx.fillRect(0,0,cv.width,cv.height);
+  const X=110,Y=70,W=540,H=170;
+  cx.fillStyle='#1e1826';cx.fillRect(X,Y,W,H);cx.strokeStyle='#d4af37';cx.lineWidth=3;cx.strokeRect(X,Y,W,H);
+  pins.forEach((p,i)=>{
+    const pw=34,ty=BASE-p.target*LIFT;
+    cx.strokeStyle=p.set?'#2ecc71':'#d4af37';cx.lineWidth=2;cx.beginPath();cx.moveTo(p.x-pw/2-6,ty);cx.lineTo(p.x+pw/2+6,ty);cx.stroke();
+    const cy=BASE-p.current*LIFT;cx.fillStyle=p.set?'#2ecc71':(tension>80?'#8e44ad':'#c0392b');cx.fillRect(p.x-pw/2,cy,pw,35);
+    cx.strokeStyle='#fff';cx.lineWidth=1;cx.strokeRect(p.x-pw/2,cy,pw,35);
+    cx.fillStyle='#888';cx.font='11px Arial';cx.fillText('Pin '+(i+1),p.x-12,Y+18);
+  });
+  cx.strokeStyle=tension>80?'#e74c3c':(tension>=40?'#2ecc71':'#7f8c8d');cx.lineWidth=5;cx.beginPath();cx.moveTo(50,Y+H+20);cx.lineTo(X,Y+H-10);cx.lineTo(X+W,Y+H-10);cx.stroke();
+  if(playing){cx.strokeStyle='#f1c40f';cx.lineWidth=8;cx.beginPath();cx.moveTo(mx-200,my+40);cx.lineTo(mx,my);cx.stroke();cx.strokeStyle='#222';cx.lineWidth=3;cx.beginPath();cx.moveTo(mx-10,my+2);cx.lineTo(mx,my);cx.stroke()}
+}
+function loop(){update();draw();if(playing)raf=requestAnimationFrame(loop)}
+$('startBtn').addEventListener('click',start);
+draw();
+
+/* ===== Durchsuchung ===== */
+let griffe=0;
+function openSearch(left){
+  griffe=Math.max(1,Math.min(3,left));
+  $('lockcard').classList.add('hide');$('search').classList.remove('hide');
+  $('storytext').textContent='Das Schloss gibt nach. Ich schlüpfe hinein und schließe die Tür hinter mir.';
+  const log=$('log');
+  log.innerHTML=line(ICH,['Der Schaffner ist schon fast da. Ich habe Zeit für einen einzigen Griff.','Ich habe Zeit für zwei Griffe, dann muss ich hinaus.','Ich habe Ruhe für drei Griffe.'][griffe-1]);
+  renderOpts();
+}
+const asked=new Set();
+function renderOpts(){
+  const box=$('opts');box.innerHTML='';
+  if(griffe<=0)return;
+  OPTS.forEach((o,i)=>{
+    if(asked.has(i))return;
+    const b=document.createElement('button');b.textContent=o.q+(griffe>1?'':'  (letzter Griff)');
+    b.onclick=()=>{
+      asked.add(i);griffe--;
+      const log=$('log');
+      log.insertAdjacentHTML('beforeend',`<p class="q">${esc(ICH)}: ${esc(o.q)}</p>`);
+      o.a.forEach(([s,t])=>log.insertAdjacentHTML('beforeend',line(s,t)));
+      addNote(o.n[0],o.n[1]);
+      if(griffe<=0){
+        log.insertAdjacentHTML('beforeend',line(ICH,'Schritte im Gang. Der Schaffner kommt zurück, ich muss hinaus.'));
+        box.innerHTML='';
+        setTimeout(()=>finish('Ich bin gerade noch aus Quills Abteil geschlüpft. Was ich gefunden habe, steht im Tagebuch.'),1200);
+      }else renderOpts();
+      log.scrollIntoView({block:'end',behavior:'smooth'});
+    };
+    box.appendChild(b);
+  });
+}
+$('leave').onclick=()=>finish('Ich verlasse Quills Abteil, bevor mich jemand sieht. Was ich gefunden habe, steht im Tagebuch.');
+function finish(t){
+  $('lockcard').classList.add('hide');$('search').classList.add('hide');
+  $('done').classList.remove('hide');$('donetext').textContent=t+' Am Hafen von Lyon wartet der Markt, und mit ihm alle Reisenden.';
+  $('storytext').textContent='Abteil 7 liegt hinter mir.';
+  store();
+}
+$('next').onclick=()=>{store();location.href=NEXT};
+window.EID_TEST={win:l=>{timer=l;end(true,'KLACK!')}};
+</script>
+<script>/* Kapitelkette: Fortschritt merken, Link zum Hauptmenü */
+(function(){var N=["szene2_bahnhof_paris.html", "szene3_speisewagen.html", "szene4_tatort.html", "szene5_bahnhof_lyon.html", "szene6_quills_abteil.html", "szene7_hafenmarkt.html", "szene8_finale.html"],me="szene6_quills_abteil.html";
+try{localStorage.setItem('eid_progress',me);var m=+localStorage.getItem('eid_maxch')||0,i=N.indexOf(me)+2;if(i>m)localStorage.setItem('eid_maxch',String(i))}catch(e){}
+document.addEventListener('DOMContentLoaded',function(){var a=document.createElement('a');a.href='szene1_titelbild.html';a.textContent='\u2630 Hauptmenü';a.style.cssText='position:fixed;top:6px;right:10px;z-index:9999;font:12px Georgia,serif;color:#c9a24a;background:rgba(20,17,13,.85);border:1px solid #c9a24a;border-radius:3px;padding:2px 8px;text-decoration:none';document.body.appendChild(a)})})();
+</script>
+<a href="szene7_hafenmarkt.html" onclick="try{store()}catch(e){}" style="position:fixed;right:12px;bottom:12px;z-index:99;background:#222;color:#eee;padding:8px 14px;border-radius:6px;font:14px sans-serif;text-decoration:none;opacity:.9">Weiter zum Hafenmarkt →</a>
+</body>
+</html>
